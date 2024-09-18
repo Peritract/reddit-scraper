@@ -21,5 +21,11 @@ INSERT INTO
 VALUES 
     ('conpiracytheories'),
     ('aww'),
-    ('UK_food')
+    ('UK_food'),
+    ('soccer'),
+    ('politics'),
+    ('aitah'),
+    ('askreddit'),
+    ('offmychest'),
+    ('batmanarkham')
 ;
