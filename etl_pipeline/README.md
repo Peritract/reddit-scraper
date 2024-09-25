@@ -8,7 +8,6 @@ A pipeline that scrapes the front page of a specific subreddit.
 2. Create a `.env` file with the following contents
 
 ```sh
-SUBREDDIT_NAME=XXXXXXXXXX
 DB_HOST=XXXXXXXXXX
 DB_USER=XXXXXXXXXX
 DB_PASSWORD=XXXXXXXXXX
@@ -16,7 +15,14 @@ DB_PORT=5432
 DB_NAME=reddit
 ```
 
-`SUBREDDIT_NAME` should be a string value: the name of the subreddit without the `r/` prefix.
+3. Create a `txt` file called `subreddits.txt` with the following contents:
+
+```
+subreddit_name_1
+subreddit_name_2
+...
+```
+The subreddit names should be without prefixes. For example "soccer" to refer to "r/soccer".
 
 ## Development
 

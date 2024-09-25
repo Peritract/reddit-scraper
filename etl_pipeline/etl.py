@@ -55,9 +55,10 @@ def get_connection(config: _Environ) -> connection:
         cursor_factory=RealDictCursor
     )
 
+
 def get_subreddit_id(subreddit_name: str, conn: connection) -> int:
     """Gets the subreddit ID from the database."""
-    
+
     with conn.cursor() as cur:
         cur.execute("SELECT subreddit_id FROM subreddit WHERE subreddit_name = %s",
                     [subreddit_name])
@@ -65,19 +66,55 @@ def get_subreddit_id(subreddit_name: str, conn: connection) -> int:
 
     return result["subreddit_id"]
 
+
+def get_subreddit_names(conn: connection) -> list[str]:
+    """Gets all of the existing subreddit names."""
+
+    with conn.cursor() as cur:
+        cur.execute("SELECT subreddit_name FROM subreddit;")
+        results = cur.fetchall()
+
+    return [result["subreddit_name"] for result in results]
+
+
+def update_subreddit_names(subreddit_names: list[str], conn: connection) -> None:
+    """If there are any new subreddit names that aren't in the database, it adds them."""
+
+    current_subreddit_names = get_subreddit_names(conn)
+    new_subreddit_names = [
+        (name,) for name in subreddit_names if name not in current_subreddit_names]
+
+    if len(new_subreddit_names) == 0:
+        return None
+
+    q = """
+    INSERT INTO subreddit
+        (subreddit_name)
+    VALUES %s
+    """
+
+    with conn.cursor() as cur:
+
+        execute_values(cur, q, new_subreddit_names)
+
+    conn.commit()
+
+
 def preprocess_post_details(posts: list[dict], subreddit_id: int) -> tuple[str, str, int, str, int]:
     """Returns a tuple of DB-appropriate values."""
-    
+
     rows = []
 
     for p in posts:
-        rows.append((p["title"], p["text"], datetime.fromtimestamp(p["at"]), p["author_name"], subreddit_id))
+        rows.append((p["title"], p["text"], datetime.fromtimestamp(
+            p["at"]), p["author_name"], subreddit_id))
 
     return rows
 
+
 def upload_post_details(posts: list[dict], conn: connection) -> None:
     """Uploads all posts to the database."""
-    
+
     q = """
     INSERT INTO post
         (post_title, post_text, at, author_name, subreddit_id)
@@ -89,18 +126,31 @@ def upload_post_details(posts: list[dict], conn: connection) -> None:
         execute_values(cur, q, posts)
 
 
+def scrape_from_subreddit(subreddit_name: str, conn: connection) -> None:
+    """Scrapes the data from a particular subreddit."""
+
+    posts = extract_reddit_data(subreddit_name)
+
+    to_insert = preprocess_post_details(get_all_post_details(posts),
+                                        subreddit_id=get_subreddit_id(subreddit_name, conn))
+
+    upload_post_details(to_insert, conn)
+
+    conn.commit()
+
+
 if __name__ == "__main__":
 
     load_dotenv()
 
     conn = get_connection(ENV)
 
-    posts = extract_reddit_data(ENV['SUBREDDIT_NAME'])
+    with open("subreddits.txt", "r") as f:
+        subreddit_names = (f.read()).split("\n")
 
-    to_insert = preprocess_post_details(get_all_post_details(posts),
-                                        subreddit_id=get_subreddit_id(ENV["SUBREDDIT_NAME"], conn))
+    update_subreddit_names(subreddit_names, conn)
 
-    upload_post_details(to_insert, conn)
+    for name in subreddit_names:
+        scrape_from_subreddit(name, conn)
 
-    conn.commit()
     conn.close()

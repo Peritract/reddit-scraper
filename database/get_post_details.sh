@@ -1,0 +1,1 @@
+psql reddit -c 'SELECT subreddit_name, count(*) FROM post JOIN subreddit USING (subreddit_id) group BY subreddit_name;'
